@@ -129,7 +129,7 @@ do
 
 		else
 		  ip=$(get_private_ip $instance_id)
-		  R53_record="$instance.$DOMAIN"
+		  R53_record="roboshop.$instance.$DOMAIN"
 
 		fi
 
