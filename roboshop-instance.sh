@@ -123,9 +123,9 @@ do
 		   echo " "$instance" alredy exist and running with id : $instance_id "
 		fi
 
-        if [ "$instance" == "frontend" ];then
+        if [ "$instance" == "roboshop-frontend" ];then
 		  ip=$(get_public_ip $instance_id)
-		  R53_record="$DOMAIN"
+		  R53_record="roboshop.$DOMAIN"
 
 		else
 		  ip=$(get_private_ip $instance_id)
