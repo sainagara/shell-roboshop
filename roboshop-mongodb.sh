@@ -48,15 +48,20 @@ is_mongodb_installed(){
 cp mongodb.repo /etc/yum.repos.d/mongodb.repo
 VALIDATE $? "Copyng monododb.repo"
 
-dnf list installed mongodb-org &>> $LOGS_FILE || true
-is_mongodb_installed $?
+set +e
+dnf list installed mongodb-org &>> $LOGS_FILE 
+MONGODB_STATUS=$?
+set -e
+is_mongodb_installed $MONGODB_STATUS
 
+
+systemctl enable mongod &>> $LOGS_FILE
+VALIDATE $? "Enabling Mongodb"
 
 systemctl start mongod &>> $LOGS_FILE
 VALIDATE $? "Starting Mongodb"
 
-systemctl enable mongod &>> $LOGS_FILE
-VALIDATE $? "Enabling Mongodb"
+
 
 STATUS=$(systemctl is-active mongod)
  if [ "$STATUS" == "active" ]; then
