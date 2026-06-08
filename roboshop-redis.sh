@@ -45,8 +45,10 @@ is_redis_installed(){
     fi
 }
 
-dnf module disable redis -y
-dnf module enable redis:7 -y
+dnf module disable redis -y &>> LOGS_FILE
+VALIDATE $? "Disable Redis"
+dnf module enable redis:7 -y &>> $LOGS_FILE
+VALIDATE $? "Enabling Redis 7"
 
 set +e
 trap '' ERR
@@ -63,7 +65,7 @@ is_redis_installed $REDIS_STATUS
 systemctl enable redis &>> $LOGS_FILE
 VALIDATE $? "Enabling Rdis"
 
-systemctl start mongod &>> $LOGS_FILE
+systemctl start redis &>> $LOGS_FILE
 VALIDATE $? "Starting redis"
 
 
