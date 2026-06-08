@@ -48,7 +48,7 @@ is_mongodb_installed(){
 cp mongodb.repo /etc/yum.repos.d/mongodb.repo
 VALIDATE $? "Copyng monododb.repo"
 
-dnf list installed mongodb-org &>> $LOGS_FILE
+dnf list installed mongodb-org &>> $LOGS_FILE || true
 is_mongodb_installed $?
 
 
