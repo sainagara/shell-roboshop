@@ -49,9 +49,14 @@ cp mongodb.repo /etc/yum.repos.d/mongodb.repo
 VALIDATE $? "Copyng monododb.repo"
 
 set +e
+trap '' ERR
+
 dnf list installed mongodb-org &>> $LOGS_FILE 
 MONGODB_STATUS=$?
+
 set -e
+trap 'echo -e "$R Error at line $LINENO $N" | tee -a $LOGS_FILE' ERR
+
 is_mongodb_installed $MONGODB_STATUS
 
 
