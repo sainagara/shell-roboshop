@@ -86,8 +86,6 @@ enable_error_handling
 is_mongosh_installed $MONGOSH_STATUS
 
 # ── Create User ───────────────────────────────────────────────
-rm -rf /app
-VALIDATE $? "Removing Existing Code"
 
 disable_error_handling
 id roboshop &>> $LOGS_FILE
@@ -102,10 +100,13 @@ if [ $USER_STATUS -ne 0 ]; then
             roboshop &>> $LOGS_FILE
     VALIDATE $? "System User Creation"
 else
-    echo -e "$TIMESTAMP $Y System User Already Created... SKIPPING $N" | tee -a $LOGS_FILE  # Fix 5,7
-    mkdir -p /app
-    chown roboshop:roboshop /app   
+    echo -e "$TIMESTAMP $Y System User Already Created... SKIPPING $N" | tee -a $LOGS_FILE    
 fi
+
+rm -rf /app
+VALIDATE $? "Removing Existing Code"
+
+mkdir -p /app
 
 # ── Download Application ──────────────────────────────────────
 rm -rf /tmp/catalogue.zip
