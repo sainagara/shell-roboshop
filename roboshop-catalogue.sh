@@ -6,7 +6,7 @@ LOGS_DIR="/var/log/roboshop"
 LOGS_FILE="$LOGS_DIR/$0.log"
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 SCRIPT_DIR=$(pwd)
-MONGO_HOST="mongodb.aslearnings.online"
+MONGO_HOST="roboshop.mongodb.aslearnings.online"
 
 R="\e[31m"
 G="\e[32m"
