@@ -123,19 +123,19 @@ do
 		   echo " "$instance" alredy exist and running with id : $instance_id "
 		fi
 
-        if [ "$instance" == "roboshop-frontend" ];then
-		  ip=$(get_public_ip $instance_id)
+        if [ "robosho-$instance" == "roboshop-frontend" ];then
+		  IP=$(get_public_ip $instance_id)
 		  R53_record="roboshop.$DOMAIN"
 
 		else
-		  ip=$(get_private_ip $instance_id)
+		  IP=$(get_private_ip $instance_id)
 		  R53_record="roboshop.$instance.$DOMAIN"
 
 		fi
 
 
 		#Update Route 53 Records
-	    update_route53_records $ip $R53_record
+	    update_route53_records $IP $R53_record
         
 		RESOLVED_IP=$(aws route53 list-resource-record-sets \
                     --hosted-zone-id "$HOSTED_ZONE" \

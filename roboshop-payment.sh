@@ -47,17 +47,20 @@ is_python_installed(){
         echo -e "$TIMESTAMP $Y Python Packages are already installed... SKIPPING $N" | tee -a $LOGS_FILE
     else
         echo -e "$Y Installing Python... $N" | tee -a $LOGS_FILE
-        dnf install python3 gcc python3-devel -y &>> $LOGS_FILE
+        dnf install python3 -y &>> $LOGS_FILE
         VALIDATE $? "Python Packages Installation"
     fi
 }
 
 
+echo -e "$Y Installing Python dependencies... $N" | tee -a $LOGS_FILE
+dnf install gcc python3-devel -y &>> $LOGS_FILE
+VALIDATE $? "Python Build Dependencies"
 
 # ── Python Setup ──────────────────────────────────────────────
 
 disable_error_handling
-dnf list installed python3 gcc python3-devel &>> $LOGS_FILE
+dnf list installed python3 &>> $LOGS_FILE
 PYTHON_STATUS=$?
 enable_error_handling
 
