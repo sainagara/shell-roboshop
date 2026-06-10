@@ -14,6 +14,7 @@ N="\e[0m"
 mkdir -p $LOGS_DIR
 touch $LOGS_FILE
 
+
 trap 'echo -e "$R Error at line $LINENO $N" | tee -a $LOGS_FILE' ERR
 
 USER_ID=$(id -u)

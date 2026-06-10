@@ -6,7 +6,7 @@ LOGS_DIR="/var/log/roboshop"
 LOGS_FILE="$LOGS_DIR/$0.log"
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 SCRIPT_DIR=$(pwd)
-MONGO_HOST="roboshop.mongodb.aslearnings.online"
+MYSQL_HOST="roboshop.mysql.aslearnings.online"
 
 R="\e[31m"
 G="\e[32m"
@@ -43,47 +43,41 @@ enable_error_handling(){
     trap 'echo -e "$R Error at line $LINENO $N" | tee -a $LOGS_FILE' ERR
 }
 
-is_nodejs_installed(){
+is_maven_installed(){
     if [ $1 -eq 0 ]; then
-        echo -e "$TIMESTAMP $Y NodeJS already installed... SKIPPING $N" | tee -a $LOGS_FILE
+        echo -e "$TIMESTAMP $Y Maven already installed... SKIPPING $N" | tee -a $LOGS_FILE
     else
-        echo -e "$Y Installing NodeJS... $N" | tee -a $LOGS_FILE
-        dnf install nodejs -y &>> $LOGS_FILE
-        VALIDATE $? "NodeJS Installation"
+        echo -e "$Y Installing Maven... $N" | tee -a $LOGS_FILE
+        dnf install maven -y &>> $LOGS_FILE
+        VALIDATE $? "Maven Installation"
     fi
 }
 
-is_mongosh_installed(){
+is_mysql_installed(){
     if [ $1 -eq 0 ]; then
-        echo -e "$TIMESTAMP $Y Mongosh already installed... SKIPPING $N" | tee -a $LOGS_FILE
+        echo -e "$TIMESTAMP $Y Mysql already installed... SKIPPING $N" | tee -a $LOGS_FILE
     else
-        echo -e "$Y Installing mongosh... $N" | tee -a $LOGS_FILE
-        dnf install mongodb-mongosh -y &>> $LOGS_FILE
-        VALIDATE $? "Mongosh Installation"
+        echo -e "$Y Installing Mysql Client... $N" | tee -a $LOGS_FILE
+        dnf install mysql -y &>> $LOGS_FILE
+        VALIDATE $? "MySql Installation"
     fi
 }
 
-# ── NodeJS Setup ──────────────────────────────────────────────
-dnf module disable nodejs -y &>> $LOGS_FILE
-dnf module enable nodejs:20 -y &>> $LOGS_FILE
-
+# ── Maven and java Setup ──────────────────────────────────────────────
 disable_error_handling
-dnf list installed nodejs &>> $LOGS_FILE
-NODEJS_STATUS=$?
+dnf list installed maven &>> $LOGS_FILE
+MAVEN_STATUS=$?
 enable_error_handling
 
-is_nodejs_installed $NODEJS_STATUS
+is_maven_installed $MAVEN_STATUS
 
-# ── MongoDB client setup BEFORE app ────────────────────
-cp $SCRIPT_DIR/mongodb.repo /etc/yum.repos.d/mongo.repo
-VALIDATE $? "Copying MongoDB Repo"
-
+# ── MYSql client setup BEFORE app ────────────────────
 disable_error_handling
-dnf list installed mongodb-mongosh &>> $LOGS_FILE
-MONGOSH_STATUS=$?
+dnf list installed mysql &>> $LOGS_FILE
+MYSQL_STATUS=$?
 enable_error_handling
 
-is_mongosh_installed $MONGOSH_STATUS
+is_mysql_installed $MYSQL_STATUS
 
 # ── Create User ───────────────────────────────────────────────
 
@@ -109,60 +103,66 @@ VALIDATE $? "Removing Existing Code"
 mkdir -p /app
 
 # ── Download Application ──────────────────────────────────────
-rm -rf /tmp/catalogue.zip
-VALIDATE $? "Remove Catalogue Zip"                
+rm -rf /tmp/shipping.zip
+VALIDATE $? "Remove Shipping Zip"                
 
-curl -o /tmp/catalogue.zip \
-    https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip \
+curl -o /tmp/shipping.zip \
+    https://roboshop-artifacts.s3.amazonaws.com/shipping-v3.zip \
     &>> $LOGS_FILE
-VALIDATE $? "Downloading Catalogue"
+VALIDATE $? "Downloading Shipping Service"
 
 cd /app
-unzip /tmp/catalogue.zip &>> $LOGS_FILE
-VALIDATE $? "Extracting Catalogue Code"
+unzip /tmp/shipping.zip &>> $LOGS_FILE
+VALIDATE $? "Extracting Shipping SErvice Code"
 
-npm install &>> $LOGS_FILE
-VALIDATE $? "Installing Dependencies"
+mvn clean package &>> $LOGS_FILE
+VALIDATE $? "Installing Mavne Dependencies"
 
-# ── Load MongoDB Schema ───────────────────────────────────────
+mv target/shipping-1.0.jar shipping.jar
+VALIDATE $? "Copying jar file from target folder to app folder"
+
+# ── Load MYsql Schema ───────────────────────────────────────
 disable_error_handling
-INDEX=$(mongosh --host $MONGO_HOST \
-    --eval 'db.getMongo().getDBNames().indexOf("catalogue")')
+mysql -h $MYSQL_HOST \
+      -u root \
+      -pRoboShop@1 \
+      -e "use cities" &>> $LOGS_FILE
+DB_STATUS=$?                        # Fix 1
 enable_error_handling
 
-if [ $INDEX -lt 0 ]; then
-    echo -e "$Y Loading MongoDB schema... $N" | tee -a $LOGS_FILE
-    mongosh --host $MONGO_HOST \
-        /app/db/master-data.js &>> $LOGS_FILE     
-    VALIDATE $? "Loading MongoDB Schema"
+if [ $DB_STATUS -ne 0 ]; then
+    mysql -h $MYSQL_HOST -uroot -pRoboShop@1 < /app/db/schema.sql
+    mysql -h $MYSQL_HOST -uroot -pRoboShop@1 < /app/db/app-user.sql
+    mysql -h $MYSQL_HOST -uroot -pRoboShop@1 < /app/db/master-data.sql
+    VALIDATE $? "Data loaded"
 else
-    echo -e "$Y Products already loaded... SKIPPING $N" | tee -a $LOGS_FILE  # Fix 7
+    echo -e "Data already loaded ... $Y SKIPPING $N"
 fi
 
 # ── Copy Service File ─────────────────────────────────────────
-cp $SCRIPT_DIR/catalogue.service \
-    /etc/systemd/system/catalogue.service
-VALIDATE $? "Copying Service File"
+cp $SCRIPT_DIR/shipping.service \
+    /etc/systemd/system/shipping.service
+VALIDATE $? "Copying Shipping Service File"
 
 # ── Start Service ─────────────────────────────────────────────
 systemctl daemon-reload &>> $LOGS_FILE
 VALIDATE $? "Daemon Reload"                       
 
-systemctl enable catalogue &>> $LOGS_FILE
-VALIDATE $? "Enabling Catalogue"
+systemctl enable shipping &>> $LOGS_FILE
+VALIDATE $? "Enabling Shipping Service"
 
-systemctl start catalogue &>> $LOGS_FILE
-VALIDATE $? "Starting Catalogue"
+systemctl start shipping &>> $LOGS_FILE
+VALIDATE $? "Starting Shipping Service"
 
 # ── Verify ────────────────────────────────────────────────────
-STATUS=$(systemctl is-active catalogue)
+STATUS=$(systemctl is-active shipping)
 if [ "$STATUS" == "active" ]; then
-    echo -e "$G Catalogue is running! $N" | tee -a $LOGS_FILE
+    echo -e "$G Shipping Service is running! $N" | tee -a $LOGS_FILE
 else
-    echo -e "$R Catalogue is not running! $N" | tee -a $LOGS_FILE
+    echo -e "$R Shipping Service is not running! $N" | tee -a $LOGS_FILE
     exit 1
 fi
 
 # ── Restart after schema load ─────────────────────────────────
-systemctl restart catalogue &>> $LOGS_FILE
-VALIDATE $? "Restarting Catalogue Service"        
+systemctl restart shipping &>> $LOGS_FILE
+VALIDATE $? "Restarting Shipping Service"        

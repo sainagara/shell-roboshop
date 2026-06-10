@@ -6,7 +6,6 @@ LOGS_DIR="/var/log/roboshop"
 LOGS_FILE="$LOGS_DIR/$0.log"
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 SCRIPT_DIR=$(pwd)
-MONGO_HOST="roboshop.mongodb.aslearnings.online"
 
 R="\e[31m"
 G="\e[32m"
@@ -53,15 +52,7 @@ is_nodejs_installed(){
     fi
 }
 
-is_mongosh_installed(){
-    if [ $1 -eq 0 ]; then
-        echo -e "$TIMESTAMP $Y Mongosh already installed... SKIPPING $N" | tee -a $LOGS_FILE
-    else
-        echo -e "$Y Installing mongosh... $N" | tee -a $LOGS_FILE
-        dnf install mongodb-mongosh -y &>> $LOGS_FILE
-        VALIDATE $? "Mongosh Installation"
-    fi
-}
+
 
 # ── NodeJS Setup ──────────────────────────────────────────────
 dnf module disable nodejs -y &>> $LOGS_FILE
@@ -73,17 +64,6 @@ NODEJS_STATUS=$?
 enable_error_handling
 
 is_nodejs_installed $NODEJS_STATUS
-
-# ── MongoDB client setup BEFORE app ────────────────────
-cp $SCRIPT_DIR/mongodb.repo /etc/yum.repos.d/mongo.repo
-VALIDATE $? "Copying MongoDB Repo"
-
-disable_error_handling
-dnf list installed mongodb-mongosh &>> $LOGS_FILE
-MONGOSH_STATUS=$?
-enable_error_handling
-
-is_mongosh_installed $MONGOSH_STATUS
 
 # ── Create User ───────────────────────────────────────────────
 
@@ -109,60 +89,44 @@ VALIDATE $? "Removing Existing Code"
 mkdir -p /app
 
 # ── Download Application ──────────────────────────────────────
-rm -rf /tmp/catalogue.zip
-VALIDATE $? "Remove Catalogue Zip"                
+rm -rf /tmp/user.zip
+VALIDATE $? "Remove User Zip"                
 
-curl -o /tmp/catalogue.zip \
-    https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip \
+curl -o /tmp/user.zip \
+    https://roboshop-artifacts.s3.amazonaws.com/user-v3.zip \
     &>> $LOGS_FILE
-VALIDATE $? "Downloading Catalogue"
+VALIDATE $? "Downloading User"
 
 cd /app
-unzip /tmp/catalogue.zip &>> $LOGS_FILE
-VALIDATE $? "Extracting Catalogue Code"
+unzip /tmp/user.zip &>> $LOGS_FILE
+VALIDATE $? "Extracting User Service Code"
 
 npm install &>> $LOGS_FILE
 VALIDATE $? "Installing Dependencies"
 
-# ── Load MongoDB Schema ───────────────────────────────────────
-disable_error_handling
-INDEX=$(mongosh --host $MONGO_HOST \
-    --eval 'db.getMongo().getDBNames().indexOf("catalogue")')
-enable_error_handling
-
-if [ $INDEX -lt 0 ]; then
-    echo -e "$Y Loading MongoDB schema... $N" | tee -a $LOGS_FILE
-    mongosh --host $MONGO_HOST \
-        /app/db/master-data.js &>> $LOGS_FILE     
-    VALIDATE $? "Loading MongoDB Schema"
-else
-    echo -e "$Y Products already loaded... SKIPPING $N" | tee -a $LOGS_FILE  # Fix 7
-fi
 
 # ── Copy Service File ─────────────────────────────────────────
-cp $SCRIPT_DIR/catalogue.service \
-    /etc/systemd/system/catalogue.service
-VALIDATE $? "Copying Service File"
+cp $SCRIPT_DIR/user.service \
+    /etc/systemd/system/user.service
+VALIDATE $? "Copying User Service File"
 
 # ── Start Service ─────────────────────────────────────────────
 systemctl daemon-reload &>> $LOGS_FILE
 VALIDATE $? "Daemon Reload"                       
 
-systemctl enable catalogue &>> $LOGS_FILE
-VALIDATE $? "Enabling Catalogue"
+systemctl enable user &>> $LOGS_FILE
+VALIDATE $? "Enabling User Service"
 
-systemctl start catalogue &>> $LOGS_FILE
-VALIDATE $? "Starting Catalogue"
+systemctl start user &>> $LOGS_FILE
+VALIDATE $? "Starting User Service"
 
 # ── Verify ────────────────────────────────────────────────────
-STATUS=$(systemctl is-active catalogue)
+STATUS=$(systemctl is-active user)
 if [ "$STATUS" == "active" ]; then
-    echo -e "$G Catalogue is running! $N" | tee -a $LOGS_FILE
+    echo -e "$G User is running! $N" | tee -a $LOGS_FILE
 else
-    echo -e "$R Catalogue is not running! $N" | tee -a $LOGS_FILE
+    echo -e "$R User is not running! $N" | tee -a $LOGS_FILE
     exit 1
 fi
 
-# ── Restart after schema load ─────────────────────────────────
-systemctl restart catalogue &>> $LOGS_FILE
-VALIDATE $? "Restarting Catalogue Service"        
+        
