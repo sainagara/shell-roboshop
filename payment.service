@@ -9,7 +9,7 @@ Environment=CART_HOST=roboshop.cart.aslearnings.online
 Environment=CART_PORT=8080
 Environment=USER_HOST=roboshop.user.aslearnings.online
 Environment=USER_PORT=8080
-Environment=AMQP_HOST=roboshop.rabbitmq.aslearnings.online
+Environment=AMQP_HOST=roboshop.rabitmq.aslearnings.online
 // highlight-end
 Environment=AMQP_USER=roboshop
 Environment=AMQP_PASS=roboshop123
